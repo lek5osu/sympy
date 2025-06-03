@@ -7,6 +7,7 @@ from keyword import iskeyword
 
 import ast
 import unicodedata
+import inspect
 from io import StringIO
 import builtins
 import types
@@ -906,7 +907,40 @@ def eval_expr(code, local_dict: DICT, global_dict: DICT):
         code, global_dict, local_dict)  # take local objects in preference
     return expr
 
+def override_signature(new_sig: str):
+    """
+    A decorator to override the displayed function signature for interactive environments like IPython.
+    Takes the standard_transformations tuple
 
+    Parameters
+    ----------
+    new_sig : str
+        A string representing the desired function signature, written in valid Python
+        `lambda` syntax (e.g., "x, y=1, z='foo'").
+
+    Returns
+    -------
+    decorator : Callable
+        A decorator that, when applied to a function, sets its `__signature__` attribute
+        to the one constructed from the provided string. This affects how the function
+        appears when inspected using `help()` or in tools like IPython, without changing
+        the function's actual behavior or accepted arguments.
+
+    Examples
+    --------
+    >>> @override_signature("x, y=1, z='foo'")
+    ... def my_func(x, y=1, z='foo'):
+    ...     return x + y
+
+    >>> import inspect
+    >>> str(inspect.signature(my_func))
+    '(x, y=1, z=\'foo\')'
+    """
+    def decorator(func):
+        func.__signature__ = inspect.signature(eval(f"lambda {new_sig}: None"))
+        return func
+    return decorator
+@override_signature("s, local_dict=None, transformations='standard', global_dict=None, evaluate=True")
 def parse_expr(s: str, local_dict: DICT | None = None,
                transformations: tuple[TRANS, ...] | str \
                    = standard_transformations,
